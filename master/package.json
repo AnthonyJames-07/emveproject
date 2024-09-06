@@ -2,7 +2,7 @@
   "name": "master",
   "version": "1.0.0",
   "private": true,
-  "homepage": "https://AnthonyJames-07.github.io/emveproject",
+  "homepage": "",
   "dependencies": {
     "@emotion/react": "^11.11.4",
     "@emotion/styled": "^11.11.5",
