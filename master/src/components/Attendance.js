@@ -4,6 +4,7 @@ import axios from 'axios';
 import { DateTime } from 'luxon';
 import { FaDownload } from 'react-icons/fa';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import '../styles/Attendance.css';
 
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -63,22 +64,23 @@ const Attendance = () => {
         const formattedDate = formatDate(selectedDate);
         setLoadingDetails(true);
         try {
-            const response = await axios.get('http://localhost:5000/api/attendance', {
-                params: {
-                    date: formattedDate,
-                    shifts: selectedShifts.join(','), // "S1,S2"
-                    lines: selectedLines.join(','),   // "3A,2"
-                },
-            });
-            setAttendanceDetails(response.data);
+          const response = await axios.get('http://localhost:5000/api/attendance', {
+            params: {
+              date: formattedDate,
+              shifts: selectedShifts.join(','), // "S1,S2"
+              lines: selectedLines.join(','),   // "3A,2"
+            },
+          });
+          setAttendanceDetails(response.data);
+          setShowTable(true); // Ensure this is set to true to display the table
         } catch (error) {
-            console.error('Error fetching attendance details:', error);
+          console.error('Error fetching attendance details:', error);
         } finally {
-            setLoadingDetails(false);
+          setLoadingDetails(false);
         }
-    }, [selectedDate, selectedShifts, selectedLines]);
-
-    const fetchDetailedRecords = async (type, shiftId, stageName, LINE) => {
+      }, [selectedDate, selectedShifts, selectedLines]);
+      
+      const fetchDetailedRecords = async (type, shiftId, stageName, LINE) => {
         const formattedDate = formatDate(selectedDate);
         setLoadingRecords(true);
         try {
@@ -99,6 +101,22 @@ const Attendance = () => {
             setLoadingRecords(false);
         }
     };
+
+      useEffect(() => {
+        const fetchAllData = async () => {
+          await fetchAttendanceDetails(); // Fetch attendance details first
+          setShowTable(true);             // Ensure table visibility after both fetches
+        };
+      
+        // Fetch data on mount and refresh every 30 seconds
+        fetchAllData();
+        const intervalId = setInterval(fetchAllData, 30000);
+      
+        // Clean up interval on unmount
+        return () => clearInterval(intervalId);
+      }, []); 
+
+
 
     const handleCheckboxChange = (event, setSelectedItems, selectedItems) => {
         const value = event.target.value;
@@ -411,204 +429,6 @@ const Attendance = () => {
     return (
         <>
             <Container fluid>
-                <style>
-                    {`
-    .animated-button {
-        background-color: #007bff;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        padding: 10px 20px;
-        cursor: pointer;
-        transition: transform 0.2s, background-color 0.2s;
-        font-size: 1rem;
-    }
-
-    .animated-button:hover {
-        transform: scale(1.05);
-        background-color: #0056b3;
-    }
-
-    .animated-button:active {
-        transform: scale(0.95);
-    }
-
-    .present {
-        background-color: #28a745;
-    }
-
-    .absent {
-        background-color: #dc3545;
-    }
-
-    .scrollable-table {
-        max-height: 400px;
-        overflow-y: auto;
-    }
-
-    .button-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        justify-content: space-between;
-    }
-
-    .button-fit {
-        flex: 1 1 auto;
-        white-space: nowrap;
-        margin-bottom: 10px;
-        text-align: center;
-        padding: 10px 20px;
-        border-radius: 5px;
-        background-color: #6c757d;
-        color: white;
-        border: none;
-        transition: background-color 0.3s ease;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    .button-fit:hover {
-        background-color: #5a6268;
-    }
-
-    .button-fit:focus {
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(108, 117, 125, 0.5);
-    }
-
-    .graph-container {
-        height: 300px;
-    }
-
-    .search-input {
-        width: 100%;
-        padding: 8px;
-        margin-bottom: 10px;
-        border-radius: 4px;
-        border: 1px solid #ddd;
-    }
-
-    .popup-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-    }
-
-    .popup-content {
-        background-color: #fff;
-        padding: 40px;
-        border-radius: 8px;
-        width: 60%;
-        height: 80%;
-        box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.3);
-        text-align: center;
-        overflow-y: auto;
-    }
-
-    .popup-content input[type="text"] {
-        width: 100%;
-        padding: 15px;
-        margin-bottom: 30px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        font-size: 18px;
-    }
-
-    .popup-content button {
-        padding: 10px 20px;
-        margin: 15px;
-        border: none;
-        border-radius: 4px;
-        background-color: #007bff;
-        color: white;
-        cursor: pointer;
-        font-size: 18px;
-    }
-
-    .popup-content button.close-button {
-        background-color: #dc3545;
-    }
-
-    .popup-content button:hover {
-        background-color: #0056b3;
-    }
-
-    .popup-content button.close-button:hover {
-        background-color: #c82333;
-    }
-
-    /* Media Queries for Responsive Design */
-    @media (max-width: 768px) {
-        .animated-button {
-            font-size: 0.875rem; /* Slightly smaller font size */
-            padding: 8px 16px;
-        }
-
-        .button-fit {
-            font-size: 14px;
-            padding: 8px 16px;
-        }
-
-        .popup-content {
-            width: 60%; /* Full width for smaller screens */
-            height: 60%; /* Height adjusts automatically */
-            padding: 20px; /* Reduce padding for small screens */
-        }
-
-        .popup-content input[type="text"] {
-            font-size: 16px; /* Smaller font size */
-        }
-
-        .popup-content button {
-            font-size: 16px; /* Smaller font size */
-            padding: 8px 16px; /* Adjust padding */
-        }
-
-        .search-input {
-            font-size: 14px; /* Smaller font size */
-        }
-    }
-
-    @media (max-width: 480px) {
-        .animated-button {
-            font-size: 0.75rem; /* Smaller font size */
-            padding: 6px 12px;
-        }
-
-        .button-fit {
-            font-size: 12px;
-            padding: 6px 12px;
-        }
-
-        .popup-content {
-            width: 50%; /* Almost full width */
-            height: 50%; /* Height adjusts automatically */
-            padding: 15px; /* Further reduced padding */
-        }
-
-        .popup-content input[type="text"] {
-            font-size: 14px; /* Smaller font size */
-        }
-
-        .popup-content button {
-            font-size: 14px; /* Smaller font size */
-            padding: 6px 12px; /* Adjust padding */
-        }
-
-        .search-input {
-            font-size: 12px; /* Smaller font size */
-        }
-    }
-    `}
-                </style>
-
                 {swapPopup && (
                     <div className="popup-overlay">
                         <div className="popup-content">
@@ -735,6 +555,7 @@ const Attendance = () => {
                                     {loadingDetails ? (
                                         <Spinner animation="border" />
                                     ) : (
+                                        
                                         <Table striped bordered hover responsive>
                                             <thead style={{ fontSize: '15px' }}>
                                                 <tr>
@@ -779,7 +600,7 @@ const Attendance = () => {
                                                 ))}
                                                 <tr>
                                                     <td colSpan="2" style={{ fontWeight: 'bold' }}> Total </td>
-                                                    <td></td>
+                                                    <td></td><td></td>
                                                     <td style={{ fontWeight: 'bold' }}>{calculateTotals().allot}</td>
                                                     <td style={{ fontWeight: 'bold' }}>{calculateTotals().present}</td>
                                                     <td style={{ fontWeight: 'bold' }}>{calculateTotals().absent}</td>
@@ -806,10 +627,11 @@ const Attendance = () => {
                                             <Button onClick={handleSaveAllSwaps}>Save All Swaps</Button>
                                         </div>
                                     )}
+                                    
                                     <div className="scrollable-table">
                                         {loadingRecords ? (
                                             <Spinner animation="border" />
-                                        ) : (
+                                        ) : (                                        
                                             <Table striped bordered hover responsive>
                                                 <thead style={{ fontSize: '15px' }}>
                                                     <tr>
@@ -818,6 +640,7 @@ const Attendance = () => {
                                                         <th>Name</th>
                                                         <th>Stage Name</th>
                                                         <th>Shift ID</th>
+                                                        {detailType === 'present' && <th>Punch Time</th>}
                                                         {detailType === 'showAll' && <th>Line</th>}
                                                         {detailType === 'showAll' && <th>Status</th>}
                                                         {detailType === 'absent' && <th>Line</th>}
@@ -834,6 +657,7 @@ const Attendance = () => {
                                                             <td>{record.NAME}</td>
                                                             <td>{record.Stage_name}</td>
                                                             <td>{record.SHIFT_ID}</td>
+                                                            {detailType === 'present' && <td>{record.PUNCHDATE}</td>}
                                                             {detailType === 'showAll' && <td>{record.LINE}</td>}
                                                             {detailType === 'showAll' && (
                                                                 <td style={{ color: record.STATUS === 'Absent' ? 'red' : 'green', fontWeight: 'bold' }}>
@@ -862,7 +686,7 @@ const Attendance = () => {
                                                     ))}
                                                 </tbody>
                                             </Table>
-
+                                                
                                         )}
                                     </div>
                                 </Col>

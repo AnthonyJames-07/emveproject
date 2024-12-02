@@ -1,0 +1,133 @@
+.table-container th {
+    animation: slideIn 0.5s ease-in-out;
+  }
+  .tableStyle {
+    width: 100%;
+    border-collapse: collapse;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.thStyle {
+    border-bottom: 2px solid #ddd;
+    padding: 15px;
+    text-align: center;
+    background-color: #1F618D;
+    color: #fff;
+    font-size: 18px;
+}
+
+.tdStyle {
+    border-bottom: 1px solid #ddd;
+    padding: 15px;
+    font-size: 16px;
+    text-align: center;
+
+}
+        .checkbox-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        .highlight-active {
+            background-color: #a9dfbf;
+        }
+
+        .selected-employees {
+            max-height: 260px;
+            overflow-y: auto;
+        }
+
+        .stages-skills {
+            max-height: 240px;
+            overflow-y: auto;
+        }
+
+        .stages-skills-header, .user-skills-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3px;
+        }
+
+        .user-skills-actions {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 3px;
+            min-width: 300px;
+            max-width: 600px;
+        }
+
+        .notification {
+            background-color: #4CAF50;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+        }
+
+
+
+        @media (max-width: 768px) {
+            .checkbox-list, .selected-employees, .stages-skills {
+                max-height: 150px;
+                padding: 8px;
+            }
+
+            .user-skills-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .stages-skills-header, .user-skills-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .tableStyle {
+                font-size: 14px;
+            }
+            .thStyle, .tdStyle {
+                padding: 10px;
+                font-size: 14px;
+            }
+
+            .notification {
+                font-size: 12px;
+                padding: 8px;
+            }
+        }
+        @media (max-width: 600px) {
+            .checkbox-list, .selected-employees, .stages-skills {
+                max-height: 150px;
+                padding: 8px;
+            }
+
+            .user-skills-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .stages-skills-header, .user-skills-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .tableStyle {
+                font-size: 14px;
+            }
+            .thStyle, .tdStyle {
+                padding: 10px;
+                font-size: 14px;
+            }
+
+            .notification {
+                font-size: 12px;
+                padding: 8px;
+            }
+        }

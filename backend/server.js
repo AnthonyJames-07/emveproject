@@ -5,7 +5,6 @@ const sql = require('mssql');
 const app = express();
 
 const path = require('path');
-
 const bodyParser = require('body-parser');
 const port = process.env.PORT || 5000;
 
@@ -39,11 +38,42 @@ app.post('/api/login', async (req, res) => {
       .query('SELECT * FROM Mx_UserLogin WHERE user_id = @userId AND password = @password');
 
     if (result.recordset.length > 0) {
+      console.log(result.recordset);
       res.status(200).json({ success: true });
     } else {
       res.status(401).json({ success: false, message: 'Invalid user ID or password' });
     }
   } catch (error) {
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+app.post('/api/change-password', async (req, res) => {
+  const { userId, oldPassword, newPassword } = req.body;
+console.log(userId,  newPassword,  oldPassword);
+  try {
+    const pool = await sql.connect(config);
+
+    // Step 1: Verify if the old password is correct
+    const userCheck = await pool.request()
+      .input('userId', sql.VarChar, userId)
+      .input('oldPassword', sql.VarChar, oldPassword)
+      .query('SELECT * FROM Mx_UserLogin WHERE user_id = @userId AND password = @oldPassword');
+
+    if (userCheck.recordset.length === 0) {
+      console.log(`Failed login attempt for userId: ${userId} - incorrect password`);
+      return res.status(401).json({ success: false, message: 'Old password is incorrect' });
+    }
+
+    // Step 2: Update the password to the new one
+    await pool.request()
+      .input('userId', sql.VarChar, userId)
+      .input('newPassword', sql.VarChar, newPassword)
+      .query('UPDATE Mx_UserLogin SET password = @newPassword WHERE user_id = @userId');
+
+    return res.status(200).json({ success: true, message: 'Password changed successfully!' });
+  } catch (error) {
+    console.error('Error in password change:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
@@ -304,69 +334,124 @@ app.get('/api/skillmaster', async (req, res) => {
     res.status(500).send(error.message);
   }
 });
-
-// Endpoint to save skills for multiple employees
-app.post('/api/save-skills', async (req, res) => {
-  const { data } = req.body;
-
-  // Validate request data
-  if (!data || !Array.isArray(data) || data.length === 0) {
-    return res.status(400).send('Invalid data format');
-  }
-
-  let transaction;
+//USER SHIFT 
+// Endpoint to handle POST request for saving user shifts
+app.post('/api/saveUserSkills', async (req, res) => {
+  const shiftsData = req.body;
 
   try {
-    // Connect to the database
-    const pool = await sql.connect(config);
+    // Connect to SQL Server
+    await sql.connect(config);
 
-    // Begin a new transaction
-    transaction = new sql.Transaction(pool);
-    await transaction.begin();
+    // Prepare SQL query to insert shifts data
+    const request = new sql.Request();
 
-    // Iterate through each employee's skill data to be saved
-    for (const employeeData of data) {
-      const { employeeId, stages } = employeeData;
-      if (!employeeId || !Array.isArray(stages)) {
-        throw new Error('Invalid input data');
-      }
+    const batchSize = 50; // Number of records per batch
 
-      await pool.request().query(`DELETE FROM Mx_UserSkills WHERE USERID = ${employeeId}`);
-      for (const stageData of stages) {
-        const { stageId, rating } = stageData;
-        if (!stageId || !rating) {
-          throw new Error('Invalid stage data');
+    for (let i = 0; i < shiftsData.length; i += batchSize) {
+      let QUERY1 = "";
+
+      // Get the current batch of shifts
+      const batch = shiftsData.slice(i, i + batchSize);
+
+      for (let shift of batch) {
+        const { userid, STAGE_NAME, Skill_Description, Skill_Rating } = shift;
+
+        if (QUERY1.length > 0) {
+          QUERY1 += " UNION ALL ";
         }
-
-        console.log(`Saving: EmployeeId: ${employeeId}, StageId: ${stageId}, Rating: ${rating}`);
-
-        // Execute the SQL query within the transaction
-        await transaction.request().query(`
-                  INSERT INTO Mx_UserSkills (userid, Stage_id, Skill_id)
-                  VALUES (${employeeId}, ${stageId}, ${rating})
-              `);
+        QUERY1 += `SELECT '${userid}' AS userid, '${STAGE_NAME}' AS STAGE_NAME, '${Skill_Description}' AS Skill_Description, '${Skill_Rating}' AS Skill_Rating`;
       }
-    }
 
-    // Commit the transaction if all queries succeed
-    await transaction.commit();
-    res.send('Skills saved successfully');
-  } catch (error) {
-    console.error('Error saving skills:', error);
+      const finalQuery = `
+   INSERT INTO Mx_UserSkills  SELECT Q1.USERID,isnull(P1.SKILL_ID,0) as SKILL_ID,ISNULL(P2.STAGE_ID,0) AS STAGE_ID,GETDATE() AS UPDATE_AT,1 as STATE FROM
+(${QUERY1}) AS Q1 LEFT OUTER JOIN MX_SKILLMASTER AS P1 ON Q1.SKILL_DESCRIPTION = P1.SKILL_DESCRIPTION
+LEFT OUTER JOIN MX_StageMaster AS P2 ON Q1.STAGE_NAME = P2.Stage_name `;
+      console.log(finalQuery);
 
-    // Rollback the transaction on error
-    if (transaction) {
+
       try {
-        await transaction.rollback();
-      } catch (rollbackError) {
-        console.error('Error rolling back transaction:', rollbackError);
+
+        await request.query(finalQuery);
+        console.log(`Batch ${i / batchSize + 1} processed successfully.`);
+      } catch (error) {
+        console.error(`Error processing batch ${i / batchSize + 1}:`, error);
       }
     }
 
-    // Respond with an internal server error
-    res.status(500).send('Server error');
+
+    // Close SQL connection
+    await sql.close();
+
+    res.status(200).send('User shifts saved successfully.');
+  } catch (err) {
+    console.error('Error saving user shifts:', err);
+    res.status(500).send('Error saving user shifts.');
   }
 });
+
+// // Endpoint to save skills for multiple employees
+// app.post('/api/save-skills', async (req, res) => {
+//   const { data } = req.body;
+
+//   // Validate request data
+//   if (!data || !Array.isArray(data) || data.length === 0) {
+//     return res.status(400).send('Invalid data format');
+//   }
+
+//   let transaction;
+
+//   try {
+//     // Connect to the database
+//     const pool = await sql.connect(config);
+
+//     // Begin a new transaction
+//     transaction = new sql.Transaction(pool);
+//     await transaction.begin();
+
+//     // Iterate through each employee's skill data to be saved
+//     for (const employeeData of data) {
+//       const { employeeId, stages } = employeeData;
+//       if (!employeeId || !Array.isArray(stages)) {
+//         throw new Error('Invalid input data');
+//       }
+
+//       await pool.request().query(`DELETE FROM Mx_UserSkills WHERE USERID = ${employeeId}`);
+//       for (const stageData of stages) {
+//         const { stageId, rating } = stageData;
+//         if (!stageId || !rating) {
+//           throw new Error('Invalid stage data');
+//         }
+
+//         console.log(`Saving: EmployeeId: ${employeeId}, StageId: ${stageId}, Rating: ${rating}`);
+
+//         // Execute the SQL query within the transaction
+//         await transaction.request().query(`
+//                   INSERT INTO Mx_UserSkills (userid, Stage_id, Skill_id)
+//                   VALUES (${employeeId}, ${stageId}, ${rating})
+//               `);
+//       }
+//     }
+
+//     // Commit the transaction if all queries succeed
+//     await transaction.commit();
+//     res.send('Skills saved successfully');
+//   } catch (error) {
+//     console.error('Error saving skills:', error);
+
+//     // Rollback the transaction on error
+//     if (transaction) {
+//       try {
+//         await transaction.rollback();
+//       } catch (rollbackError) {
+//         console.error('Error rolling back transaction:', rollbackError);
+//       }
+//     }
+
+//     // Respond with an internal server error
+//     res.status(500).send('Server error');
+//   }
+// });
 
 // Fetch user skills
 app.get('/api/user-skills', async (req, res) => {
@@ -413,7 +498,7 @@ app.post('/api/saveUserShifts', async (req, res) => {
     // Prepare SQL query to insert shifts data
     const request = new sql.Request();
 
-    const batchSize = 100; // Number of records per batch
+    const batchSize = 50; // Number of records per batch
 
     for (let i = 0; i < shiftsData.length; i += batchSize) {
       let QUERY1 = "";
@@ -430,14 +515,23 @@ app.post('/api/saveUserShifts', async (req, res) => {
         QUERY1 += `SELECT '${Shift_date_from}' AS SHIFT_FROM_DATE, '${Shift_date_to}' AS SHIFT_TO_DATE, '${userid}' AS userid, '${STAGE_NAME}' AS STAGE_NAME, '${SHIFT_ID}' AS SHIFT_ID, '${LINE}' AS LINE`;
       }
 
+      const deleteQuery = `delete p1 from mx_usershifts as p1 
+        inner join (SELECT SHIFT_FROM_DATE, SHIFT_TO_DATE, userid, P1.stage_id, SHIFT_ID,LINE
+    FROM (${QUERY1}) AS Q1 LEFT OUTER JOIN Mx_StageMaster AS P1 ON Q1.STAGE_NAME = P1.Stage_name)
+    as q1 on p1.shift_date_from = q1.shift_from_date and p1.shift_date_to = q1.shift_to_date and q1.userid = p1.userid 
+	where p1.userid = q1.userid and  p1.shift_date_from = q1.shift_from_date and p1.shift_date_to = q1.shift_to_date`
+
       const finalQuery = `
     INSERT INTO Mx_UserShifts (Shift_date_from, Shift_date_to, userid, stage_id,SHIFT_ID,LINE)
     SELECT SHIFT_FROM_DATE, SHIFT_TO_DATE, userid, P1.stage_id, SHIFT_ID,LINE
     FROM (${QUERY1}) AS Q1
     LEFT OUTER JOIN Mx_StageMaster AS P1 ON Q1.STAGE_NAME = P1.Stage_name
   `;
+      console.log(finalQuery);
+
 
       try {
+        await request.query(deleteQuery);
         await request.query(finalQuery);
         console.log(`Batch ${i / batchSize + 1} processed successfully.`);
       } catch (error) {
@@ -482,10 +576,9 @@ app.get('/api/getUserShifts', async (req, res) => {
 
 app.get('/api/attendance', async (req, res) => {
   const { date, shifts, lines } = req.query;
-
+  let pool= await sql.connect(config);
   try {
-    await sql.connect(config);
-    const result = await sql.query(`
+    const result = await pool.request().query(`
 SELECT DISTINCT Stage_name, Stageid AS STAGE_ID, SHIFT_ID, LINE1 AS LINE,
              SUM(ALLOT) AS ALLOT, SUM(PRESENT) AS PRESENT, SUM(ABSENT) AS ABSENT
       FROM (

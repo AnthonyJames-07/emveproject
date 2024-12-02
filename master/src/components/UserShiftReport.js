@@ -5,6 +5,7 @@ import { FaSort, FaDownload } from 'react-icons/fa';
 import moment from 'moment';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import '../styles/UserShiftReport.css';  // Import the CSS file
 
 const baseURL = 'http://localhost:5000/api';
 
@@ -193,61 +194,6 @@ const UserShiftReport = () => {
 
     return (
         <Container fluid>
-            <style jsx>{`
-          .custom-search, .custom-date {
-          flex: 1;
-          min-width: 200px;
-          max-width: 250px;
-          margin-right: 10px;
-        }
-
-        .custom-btn {
-          font-size: 14px;
-          margin-top: 6px;
-        }
-  
-          .filter-container {
-            max-height: 200px;
-            overflow-y: auto;
-            border: 1px solid #ced4da;
-            padding: 10px;
-          }
-  
-          .filter-check {
-            font-size: 15px;
-          }
-  
-          thead th {
-            font-size: 15px;
-          }
-  
-          tbody td {
-            font-size: 15px;
-          }
-  
-          .table-controls {
-            font-size: 14px;
-          }
-  
-          @media (max-width: 768px) {
-            .custom-search, .custom-date {
-            min-width: 100%;
-            max-width: 100%;
-            margin-right: 0;
-            margin-bottom: 10px;
-          }
-  
-            .custom-btn {
-              font-size: 12px;
-            }
-  
-            thead th,
-            tbody td {
-              font-size: 13px;
-            }
-          }
-        `}</style>
-
             <Row className="mt-4">
                 <Col md={12}>
                     <div className="d-flex flex-wrap justify-content-between align-items-center mb-3">
@@ -302,7 +248,7 @@ const UserShiftReport = () => {
                             </div>
                         </Col>
                         <Col md={6} className="mb-3">
-                            <h5>Filter by Stage</h5>
+                            <h5>Filter by Stage Name</h5>
                             <div className="filter-container">
                                 {loading ? <Spinner animation="border" /> :
                                     uniqueStages.map(stage => (
@@ -320,48 +266,57 @@ const UserShiftReport = () => {
                             </div>
                         </Col>
                     </Row>
-
                     <div className="d-flex justify-content-end mb-3">
-                        <Button variant="success" onClick={handleDownload} className="custom-btn">
-                            <FaDownload /> Download as Excel
-                        </Button>
+                    <Button onClick={handleDownload} className="ml-3"><FaDownload /> Download PDF</Button>
                     </div>
 
-                    <Table striped bordered hover responsive>
-                        <thead>
-                            <tr>
-                                <th onClick={() => handleSort('userid')}>User ID <SortIcon columnKey="userid" /></th>
-                                <th onClick={() => handleSort('user_name')}>User Name <SortIcon columnKey="user_name" /></th>
-                                <th onClick={() => handleSort('SHIFT_ID')}>SHIFT ID <SortIcon columnKey="SHIFT_ID" /></th>
-                                <th onClick={() => handleSort('Stage_name')}>Stage Name <SortIcon columnKey="Stage_name" /></th>
-                                <th onClick={() => handleSort('Shift_date_from')}>Shift Date <SortIcon columnKey="Shift_date_from" /></th>
-                                <th onClick={() => handleSort('LINE')}>Line <SortIcon columnKey="LINE" /></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {paginatedUserShifts
-                                .filter(shift =>
-                                    searchUserShift === '' ||
-                                    Object.values(shift).some(value =>
-                                        (value || '').toString().toLowerCase().includes(searchUserShift.toLowerCase())
-                                    )
-                                )
-                                .map((shift, index) => (
+                    {loading ? (
+                        <Spinner animation="border" />
+                    ) : (
+                        <Table striped bordered hover>
+                            <thead>
+                                <tr>
+                                    <th onClick={() => handleSort('userid')} className="sortable">
+                                        User ID <SortIcon columnKey="userid" />
+                                    </th>
+                                    <th onClick={() => handleSort('user_name')} className="sortable">
+                                        User Name <SortIcon columnKey="user_name" />
+                                    </th>
+                                    <th onClick={() => handleSort('SHIFT_ID')} className="sortable">
+                                        SHIFT ID <SortIcon columnKey="SHIFT_ID" />
+                                    </th>
+                                    <th onClick={() => handleSort('Stage_name')} className="sortable">
+                                        Stage Name <SortIcon columnKey="Stage_name" />
+                                    </th>
+                                    <th onClick={() => handleSort('Shift_date_from')} className="sortable">
+                                        Shift Date From <SortIcon columnKey="Shift_date_from" />
+                                    </th>
+                                    <th onClick={() => handleSort('Shift_date_to')} className="sortable">
+                                        Shift Date To <SortIcon columnKey="Shift_date_to" />
+                                    </th>
+                                    <th>Line</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {paginatedUserShifts.map((shift, index) => (
                                     <tr key={index}>
-                                        <td>{highlightText(shift.userid || '', searchUserShift)}</td>
-                                        <td>{highlightText(shift.user_name || '', searchUserShift)}</td>
-                                        <td>{highlightText(shift.SHIFT_ID || '', searchUserShift)}</td>
-                                        <td>{highlightText(shift.Stage_name || '', searchUserShift)}</td>
-                                        <td>{highlightText(formatDate(shift.Shift_date_from) || '', searchUserShift)}</td>
-                                        <td>{highlightText(shift.LINE || '', searchUserShift)}</td>
+                                        <td>{highlightText(shift.userid, searchUserShift)}</td>
+                                        <td>{highlightText(shift.user_name, searchUserShift)}</td>
+                                        <td>{highlightText(shift.SHIFT_ID, searchUserShift)}</td>
+                                        <td>{highlightText(shift.Stage_name, searchUserShift)}</td>
+                                        <td>{highlightText(formatDate(shift.Shift_date_from), searchUserShift)}</td>
+                                        <td>{highlightText(formatDate(shift.Shift_date_to), searchUserShift)}</td>
+                                        <td>{highlightText(shift.LINE, searchUserShift)}</td>
                                     </tr>
                                 ))}
-                        </tbody>
-                    </Table>
+                            </tbody>
+                        </Table>
+                    )}
 
-                    <div className="d-flex justify-content-between table-controls">
-                        <Button variant="primary" onClick={handlePrevPage} disabled={currentPage === 1}>Prev</Button>
-                        <Button variant="primary" onClick={handleNextPage} disabled={currentPage * pageSize >= sortedUserShifts.length}>Next</Button>
+                    <div className="pagination-controls">
+                        <Button onClick={handlePrevPage} disabled={currentPage === 1}>Prev</Button>
+                        <span>Page {currentPage} of {Math.ceil(sortedUserShifts.length / pageSize)}</span>
+                        <Button onClick={handleNextPage} disabled={currentPage * pageSize >= sortedUserShifts.length}>Next</Button>
                     </div>
                 </Col>
             </Row>

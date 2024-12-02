@@ -4,8 +4,12 @@ import { Form, Button, Container, Row, Col, Table, Spinner } from 'react-bootstr
 import { BsTrash, BsDownload } from 'react-icons/bs';
 import { FaSort } from 'react-icons/fa';
 import * as XLSX from 'xlsx';
+import '../styles/UserSkills.css';
+import emvLogo from '../pictures/emvlogo.png';
+import { Popover, Typography } from '@mui/material';
 
 const baseURL = 'http://localhost:5000/api';
+
 
 const UserSkills = () => {
     const [departments, setDepartments] = useState([]);
@@ -24,6 +28,9 @@ const UserSkills = () => {
     const [searchUserskill, setsearchUserskill] = useState('');
     const [notification, setNotification] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+    const [anchorEl, setAnchorEl] = useState(null);
+    const [popoverContent, setPopoverContent] = useState('');
+    const isOpen = Boolean(anchorEl);
 
 
     useEffect(() => {
@@ -238,13 +245,13 @@ const UserSkills = () => {
         emp.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-
     const filteredUserSkills = sortedUserSkills.filter((skill) =>
-        skill.NAME.toLowerCase().includes(searchUserskill.toLowerCase()) ||
-        skill.USERID.toString().includes(searchUserskill.toLowerCase()) ||
-        skill.STAGE_NAME.toLowerCase().includes(searchUserskill.toLowerCase()) ||
-        skill.Skill_Description.toLowerCase().includes(searchUserskill.toLowerCase())
+        (skill.NAME ? skill.NAME.toLowerCase() : '').includes(searchUserskill.toLowerCase()) ||
+        (skill.USERID ? skill.USERID.toString() : '').includes(searchUserskill.toLowerCase()) ||
+        (skill.STAGE_NAME ? skill.STAGE_NAME.toLowerCase() : '').includes(searchUserskill.toLowerCase()) ||
+        (skill.Skill_Description ? skill.Skill_Description.toLowerCase() : '').includes(searchUserskill.toLowerCase())
     );
+
 
     const handleSort = (key) => {
         let direction = 'asc';
@@ -262,8 +269,16 @@ const UserSkills = () => {
         return <FaSort />;
     };
 
+    const handlePopoverClose = () => {
+        setAnchorEl(null);
+        setPopoverContent('');
+    };
+
+
     return (
-        <Container fluid>
+        <Container fluid
+            className="container-fluid"
+            style={{ backgroundImage: `url(${emvLogo})`, backgroundSize: 'auto', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', minHeight: 'auto', opacity: '0.9' }}>
             <h2 className="mb-4">User Skills Management</h2>
             {message && <div className="alert alert-info">{message}</div>}
             <Row>
@@ -349,8 +364,8 @@ const UserSkills = () => {
                             {loading ? <Spinner animation="border" size="sm" /> : 'Save'}
                         </Button>
                     </div>
-                    <div className="stages-skills">
-                        <table className="table table-bordered">
+                    <div style={{ maxHeight: '400px', overflowY: 'auto' }}> {/* Scrolling */}
+                        <Table striped bordered hover responsive className="table-container">
                             <thead className="thead-dark">
                                 <tr>
                                     <th>Stage Name</th>
@@ -372,7 +387,8 @@ const UserSkills = () => {
                                             <select
                                                 className="form-control mt-2"
                                                 onChange={(e) => handleRatingChange(e, stage.Stage_id)}
-                                                value={ratings[stage.Stage_id] || ''}>
+                                                value={ratings[stage.Stage_id] || ''}
+                                            >
                                                 <option value="">Select Rating</option>
                                                 {skills.map((skill) => (
                                                     <option key={skill.Skill_id} value={skill.Skill_id}>
@@ -384,7 +400,24 @@ const UserSkills = () => {
                                     </tr>
                                 ))}
                             </tbody>
-                        </table>
+                        </Table>
+
+                        {/* Popover */}
+                        <Popover
+                            open={isOpen}
+                            anchorEl={anchorEl}
+                            onClose={handlePopoverClose}
+                            anchorOrigin={{
+                                vertical: 'bottom',
+                                horizontal: 'center',
+                            }}
+                            transformOrigin={{
+                                vertical: 'top',
+                                horizontal: 'center',
+                            }}
+                        >
+                            <Typography sx={{ p: 2 }}>{popoverContent}</Typography>
+                        </Popover>
                     </div>
                 </Col>
             </Row>
@@ -406,7 +439,7 @@ const UserSkills = () => {
                             </Button>
                         </div>
                     </div>
-                    <Table striped bordered hover>
+                    <Table striped bordered hover responsive className="table-container">
                         <thead>
                             <tr>
                                 <th onClick={() => handleSort('USERID')}>
@@ -451,81 +484,7 @@ const UserSkills = () => {
                     {notification}
                 </div>
             )}
-            <style>
-                {`
-        .checkbox-list {
-            max-height: 200px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            padding: 10px;
-        }
 
-        .highlight-active {
-            background-color: #a9dfbf;
-        }
-
-        .selected-employees {
-            max-height: 260px;
-            overflow-y: auto;
-        }
-
-        .stages-skills {
-            max-height: 240px;
-            overflow-y: auto;
-        }
-
-        .stages-skills-header, .user-skills-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 3px;
-        }
-
-        .user-skills-actions {
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 3px;
-            min-width: 300px;
-            max-width: 600px;
-        }
-
-        .notification {
-            background-color: #4CAF50;
-            color: white;
-            text-align: center;
-            padding: 10px;
-            position: fixed;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1;
-        }
-
-        @media (max-width: 768px) {
-            .checkbox-list, .selected-employees, .stages-skills {
-                max-height: 150px;
-                padding: 8px;
-            }
-
-            .user-skills-actions {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .stages-skills-header, .user-skills-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .notification {
-                font-size: 12px;
-                padding: 8px;
-            }
-        }
-        `}
-            </style>
         </Container>
 
     );

@@ -1,6 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Container } from 'react-bootstrap';
+import { Container, Table, InputGroup, FormControl, Button } from 'react-bootstrap';
+import { TextField, Select, MenuItem, Snackbar, Typography } from '@mui/material';
+import MuiAlert from '@mui/material/Alert';
+import '../styles/StageMaster.css';
+import emvLogo from '../pictures/emvlogo.png';
+import { MdEdit } from 'react-icons/md';
+
+
+const Alert = React.forwardRef(function Alert(props, ref) {
+  return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
+});
 
 const StageMaster = () => {
   const [stages, setStages] = useState([]);
@@ -8,6 +18,7 @@ const StageMaster = () => {
   const [notification, setNotification] = useState('');
   const [editingStage, setEditingStage] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
 
   const stageTypes = ['Prelamination', 'Laminator & Framing Line', 'Testing & Packing Line'];
 
@@ -36,9 +47,9 @@ const StageMaster = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (editingStage) {
-      updateStage();
+      await updateStage();
     } else {
-      addStage();
+      await addStage();
     }
   };
 
@@ -48,15 +59,11 @@ const StageMaster = () => {
       setStages([...stages, response.data]);
       setNewStage({ Stage_name: '', Stage_Type: '' });
       setNotification('Stage added successfully');
+      setSnackbarOpen(true);
     } catch (error) {
       console.error('Error adding stage:', error);
-      if (error.response && error.response.status === 409) {
-        setNotification('Stage Name already exists');
-      } else {
-        setNotification('Error adding stage');
-      }
-    } finally {
-      setTimeout(() => setNotification(''), 3000);
+      setNotification(error.response?.status === 409 ? 'Stage Name already exists' : 'Error adding stage');
+      setSnackbarOpen(true);
     }
   };
 
@@ -69,12 +76,12 @@ const StageMaster = () => {
       setStages(updatedStages);
       setNewStage({ Stage_name: '', Stage_Type: '' });
       setEditingStage(null);
-      setNotification(response.data.message);
+      setNotification('Stage updated successfully');
+      setSnackbarOpen(true);
     } catch (error) {
       console.error('Error updating stage:', error);
-      setNotification('Stage updated successfully');
-    } finally {
-      setTimeout(() => setNotification(''), 3000);
+      setNotification('Error updating stage');
+      setSnackbarOpen(true);
     }
   };
 
@@ -92,204 +99,97 @@ const StageMaster = () => {
     stage.Stage_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
+  };
+
   return (
-    <Container fluid>
-      <h1>Stage Master</h1>
-      <input
-        type="text"
-        placeholder="Search Stage Name..."
-        value={searchTerm}
-        onChange={handleSearchChange}
-        className="search-bar"
-      />
+    <Container fluid
+      className="container-fluid"
+      style={{ backgroundImage: `url(${emvLogo})`, backgroundSize: 'auto', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', minHeight: 'auto', opacity: '0.9' }}>
+      <Typography variant="h4" align="left" gutterBottom>
+        Stage Master
+      </Typography>
+
       <form onSubmit={handleSubmit} className="form-container">
-        <div>
-          <label>Stage Name:</label>
-          <input
-            type="text"
-            name="Stage_name"
-            value={newStage.Stage_name}
-            onChange={handleChange}
-            className="form-input"
-            required
-          />
-        </div>
-        <div>
-          <label>Stage Type:</label>
-          <select
-            name="Stage_Type"
-            value={newStage.Stage_Type}
-            onChange={handleChange}
-            className="form-select"
-            required
-          >
-            <option value="">Select Stage Type</option>
-            {stageTypes.map((type, index) => (
-              <option key={index} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <button type="submit" className="form-button">
+        <TextField
+          label="Stage Name"
+          name="Stage_name"
+          value={newStage.Stage_name}
+          onChange={handleChange}
+          className="form-input"
+          required
+          fullWidth
+          margin="normal"
+        />
+        <Select
+          name="Stage_Type"
+          value={newStage.Stage_Type}
+          onChange={handleChange}
+          className="form-select"
+          displayEmpty
+          fullWidth
+          required
+        >
+          <MenuItem value="">Select Stage Type</MenuItem>
+          {stageTypes.map((type, index) => (
+            <MenuItem key={index} value={type}>
+              {type}
+            </MenuItem>
+          ))}
+        </Select>&nbsp;
+        <div className="button-group">
+          <Button type="submit" variant="contained" color="primary" className="form-button">
             {editingStage ? 'Update Stage' : 'Add Stage'}
-          </button>
+          </Button>
           {editingStage && (
-            <button type="button" onClick={cancelEdit} className="form-button cancel-button">
+            <Button variant="outlined" onClick={cancelEdit} className="form-button">
               Cancel
-            </button>
+            </Button>
           )}
         </div>
-      </form>
-      {notification && (
-        <div className="notification">
-          <p>{notification}</p>
+        <div className="d-flex justify-content-end mb-3">
+          <InputGroup className="input-group" style={{ width: '600px' }}>
+            <FormControl
+              placeholder="Search Stage Name..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              className="search-bar"
+            />
+          </InputGroup>
         </div>
-      )}
-      <table className="table-container">
+      </form>
+      <Table striped bordered hover responsive className="table-container tableStyle">
         <thead>
           <tr>
-            <th>Stage ID</th>
-            <th>Stage Name</th>
-            <th>Stage Type</th>
-            <th>Actions</th>
+            <th className="thStyle">Stage ID</th>
+            <th className="thStyle">Stage Name</th>
+            <th className="thStyle">Stage Type</th>
+            <th className="thStyle">Actions</th>
           </tr>
         </thead>
         <tbody>
-          {filteredStages.map((stage) => (
-            <tr key={stage.Stage_id}>
-              <td>{stage.Stage_id}</td>
-              <td>{stage.Stage_name}</td>
-              <td>{stage.Stage_Type}</td>
-              <td>
-                <button onClick={() => editStage(stage)} className="form-button">Edit</button>
+          {filteredStages.map((stage, index) => (
+            <tr key={stage.Stage_id} style={{ '--animation-order': index }}>
+              <td className="tdStyle">{stage.Stage_id}</td>
+              <td className="tdStyle">{stage.Stage_name}</td>
+              <td className="tdStyle">{stage.Stage_Type}</td>
+              <td className="tdStyle">
+                
+                <Button onClick={() => editStage(stage)} variant="warning" size="lg">
+                <MdEdit style={{ marginRight: '5px' }} /> 
+                </Button>
               </td>
             </tr>
           ))}
         </tbody>
-      </table>
-      {notification && (
-        <div className="notification">
+      </Table>
+
+      <Snackbar open={snackbarOpen} autoHideDuration={3000} onClose={handleSnackbarClose}>
+        <Alert onClose={handleSnackbarClose} severity="success" sx={{ width: '100%' }}>
           {notification}
-        </div>
-      )}
-      <style>{`
-        .form-container {
-          margin-bottom: 20px;
-          padding: 20px;
-          border: 1px solid #ccc;
-          border-radius: 10px;
-          background-color: #e3f2fd;
-          width: 550px;
-          box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .form-input, .form-select {
-          margin-bottom: 10px;
-          padding: 10px;
-          width: 100%;
-          box-sizing: border-box;
-          border-radius: 20px;
-          border: 1px solid #ccc;
-          outline: none;
-          font-size: 15px;
-          box-shadow: inset 0px 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .form-select {
-          cursor: pointer;
-        }
-
-        .form-button {
-          padding: 12px 20px;
-          background-color: #212F3D;
-          color: #fff;
-          border: none;
-          border-radius: 25px;
-          cursor: pointer;
-          font-size: 14px;
-          transition: background-color 0.3s ease;
-          outline: none;
-        }
-
-        .cancel-button {
-          margin-left: 10px;
-          background-color: #5bc0de;
-        }
-
-        .table-container {
-          width: 100%;
-          border-collapse: collapse;
-          box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        th {
-          border-bottom: 2px solid #ddd;
-          padding: 15px;
-          text-align: left;
-          background-color: #1F618D;
-          color: #fff;
-          font-size: 18px;
-        }
-
-        td {
-          border-bottom: 1px solid #ddd;
-          padding: 15px;
-          font-size: 16px;
-        }
-
-        .search-bar {
-          margin-bottom: 20px;
-          padding: 12px 20px;
-          width: 300px;
-          float: right;
-          border-radius: 25px;
-          border: 1px solid #ccc;
-          box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-          outline: none;
-          font-size: 15px;
-          transition: box-shadow 0.3s ease;
-        }
-
-        .notification {
-          background-color: #4CAF50;
-          color: white;
-          text-align: center;
-          padding: 10px;
-          position: fixed;
-          top: 10px;
-          left: 50%;
-          transform: translateX(-50%);
-          z-index: 1;
-        }
-
-        @media (max-width: 768px) {
-          .form-container {
-            width: 100%;
-            padding: 15px;
-          }
-
-          .form-input, .form-select {
-            font-size: 14px;
-          }
-
-          .form-button {
-            padding: 10px 18px;
-            font-size: 13px;
-          }
-
-          .search-bar {
-            width: 100%;
-            margin-bottom: 15px;
-          }
-
-          th, td {
-            font-size: 16px;
-            padding: 10px;
-          }
-        }
-      `}</style>
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

@@ -1,18 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react'; 
 import axios from 'axios';
-import { Container } from 'react-bootstrap';
-import 'bootstrap/dist/css/bootstrap.min.css';
+import { Container, Table, InputGroup, FormControl, Button } from 'react-bootstrap';
+import { TextField, Select, MenuItem, Snackbar, Typography, IconButton } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import MuiAlert from '@mui/material/Alert';
+import '../styles/SkillMaster.css';
+import emvLogo from '../pictures/emvlogo.png';
+
+
+const Alert = React.forwardRef(function Alert(props, ref) {
+  return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
+});
 
 const SkillMaster = () => {
   const [skills, setSkills] = useState([]);
-  const [skill, setSkill] = useState({
-    Skill_Rating: '',
-    Skill_Description: ''
-  });
+  const [newSkill, setNewSkill] = useState({ Skill_Description: '', Skill_Rating: '' });
   const [notification, setNotification] = useState('');
   const [editingSkill, setEditingSkill] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [showSearchBar, setShowSearchBar] = useState(false); // State for toggling search bar
+
+  const skillRatings = ['1', '2', '3', '4', '5']; // Example ratings
 
   useEffect(() => {
     fetchData();
@@ -20,20 +29,16 @@ const SkillMaster = () => {
 
   const fetchData = async () => {
     try {
-      setLoading(true);
       const response = await axios.get('http://localhost:5000/api/skill-master');
       setSkills(response.data);
     } catch (error) {
-      console.error('Error fetching skills:', error);
-      setNotification('Error fetching skills');
-    } finally {
-      setLoading(false);
+      console.error('Error fetching skill data:', error);
     }
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setSkill({ ...skill, [name]: value });
+    setNewSkill({ ...newSkill, [name]: value });
   };
 
   const handleSearchChange = (e) => {
@@ -42,240 +47,165 @@ const SkillMaster = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      if (editingSkill) {
-        await updateSkill();
-      } else {
-        await addSkill();
-      }
-    } catch (error) {
-      console.error('Error submitting skill:', error);
-      setNotification('Error submitting skill');
+    if (editingSkill) {
+      await updateSkill();
+    } else {
+      await addSkill();
     }
   };
 
   const addSkill = async () => {
     try {
-      setLoading(true);
-      const response = await axios.post('http://localhost:5000/api/skill-master', skill);
+      const response = await axios.post('http://localhost:5000/api/skill-master', newSkill);
       setSkills([...skills, response.data]);
-      setSkill({ Skill_Rating: '', Skill_Description: '' });
+      setNewSkill({ Skill_Description: '', Skill_Rating: '' });
       setNotification('Skill added successfully');
+      setSnackbarOpen(true);
     } catch (error) {
-      console.error('Skill already exists:', error);
-      setNotification('Skill already exists');
-    } finally {
-      setLoading(false);
-      setTimeout(() => setNotification(''), 3000);
+      console.error('Error adding skill:', error);
+      setNotification(error.response?.status === 409 ? 'Skill Name already exists' : 'Error adding skill');
+      setSnackbarOpen(true);
     }
   };
 
   const updateSkill = async () => {
     try {
-      setLoading(true);
-      const response = await axios.put(`http://localhost:5000/api/skill-master/${editingSkill.Skill_id}`, skill);
-      const updatedSkills = skills.map(s => (s.Skill_id === editingSkill.Skill_id ? response.data : s));
+      const response = await axios.put(`http://localhost:5000/api/skill-master/${editingSkill.Skill_id}`, newSkill);
+      const updatedSkills = skills.map(skill =>
+        skill.Skill_id === editingSkill.Skill_id ? response.data : skill
+      );
       setSkills(updatedSkills);
-      setSkill({ Skill_Rating: '', Skill_Description: '' });
+      setNewSkill({ Skill_Description: '', Skill_Rating: '' });
       setEditingSkill(null);
       setNotification('Skill updated successfully');
+      setSnackbarOpen(true);
     } catch (error) {
       console.error('Error updating skill:', error);
       setNotification('Error updating skill');
-    } finally {
-      setLoading(false);
-      setTimeout(() => setNotification(''), 3000);
+      setSnackbarOpen(true);
     }
   };
 
-  const editSkill = (selectedSkill) => {
-    setSkill({ Skill_Rating: selectedSkill.Skill_Rating, Skill_Description: selectedSkill.Skill_Description });
-    setEditingSkill(selectedSkill);
+  const editSkill = (skill) => {
+    setNewSkill({ Skill_Description: skill.Skill_Description, Skill_Rating: skill.Skill_Rating });
+    setEditingSkill(skill);
   };
 
   const cancelEdit = () => {
-    setSkill({ Skill_Rating: '', Skill_Description: '' });
+    setNewSkill({ Skill_Description: '', Skill_Rating: '' });
     setEditingSkill(null);
   };
 
+  // Update the filter to match the property names
   const filteredSkills = skills.filter(skill =>
-    skill.Skill_Description.toLowerCase().includes(searchTerm.toLowerCase())
+    skill.Skill_Description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  return (
-    <Container fluid>
-      <h1>Skill Master</h1>
-      <input
-        type="text"
-        placeholder="Search Skill..."
-        value={searchTerm}
-        onChange={handleSearchChange}
-        className="searchStyle"
-      />
-      <form onSubmit={handleSubmit} className="formStyle">
-        <div>
-          <label>Skill Rating:</label>
-          <select
-            name="Skill_Rating"
-            value={skill.Skill_Rating}
-            onChange={handleChange}
-            className="inputStyle"
-            required
-          >
-            <option value="">Select Rating</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-          </select>
-        </div>
-        <div>
-          <label>Skill Description:</label>
-          <input
-            type="text"
-            name="Skill_Description"
-            value={skill.Skill_Description}
-            onChange={handleChange}
-            className="inputStyle"
-            required
-          />
-        </div>
-        <button type="submit" className="buttonStyle" disabled={loading}>
-          {editingSkill ? 'Update Skill' : 'Add Skill'}
-        </button>
-        {editingSkill && (
-          <button type="button" onClick={cancelEdit} className="buttonStyle" style={{ backgroundColor: '#6c757d', marginLeft: '10px' }}>
-            Cancel
-          </button>
-        )}
-      </form>
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
+  };
 
-      <table className="tableStyle">
+  const toggleSearchBar = () => {
+    setShowSearchBar(!showSearchBar); // Toggle the search bar visibility
+  };
+
+  return (
+    <Container fluid 
+    className="container-fluid" 
+    style={{ backgroundImage: `url(${emvLogo})`, backgroundSize: 'auto', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', minHeight: 'auto', opacity: '0.9' }}>
+      <Typography variant="h4" align="left" gutterBottom>
+        Skill Master
+      </Typography>
+
+      <form onSubmit={handleSubmit} className="form-container">
+        <TextField
+          label="Skill Description"
+          name="Skill_Description"
+          value={newSkill.Skill_Description}
+          onChange={handleChange}
+          className="form-input"
+          required
+          fullWidth
+          margin="normal"
+        />
+        <Select
+          name="Skill_Rating"
+          value={newSkill.Skill_Rating}
+          onChange={handleChange}
+          className="form-select"
+          displayEmpty
+          fullWidth
+          required
+        >
+          <MenuItem value=""><em>Select Skill Rating</em></MenuItem>
+          {skillRatings.map((rating, index) => (
+            <MenuItem key={index} value={rating}>
+              {rating}
+            </MenuItem>
+          ))}
+        </Select>&nbsp;
+        <div className="button-group">
+          <Button type="submit" variant="contained" color="primary" className="form-button">
+            {editingSkill ? 'Update Skill' : 'Add Skill'}
+          </Button>
+          {editingSkill && (
+            <Button variant="outlined" onClick={cancelEdit} className="form-button">
+              Cancel
+            </Button>
+          )}
+        </div>
+
+        <div className="d-flex justify-content-end mb-3">
+          {/* Search icon button */}
+          <IconButton onClick={toggleSearchBar}>
+            <SearchIcon />
+          </IconButton>
+
+          {/* Conditionally render the search bar */}
+          {showSearchBar && (
+            <InputGroup className="input-group" style={{ width: '600px' }}>
+              <FormControl
+                placeholder="Search Skill Name..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                className="search-bar"
+              />
+            </InputGroup>
+          )}
+        </div>
+      </form>
+      
+      <Table striped bordered hover responsive className="table-container">
         <thead>
           <tr>
-            <th className="thStyle">Skill ID</th>
-            <th className="thStyle">Skill Rating</th>
-            <th className="thStyle">Skill Description</th>
-            <th className="thStyle">Actions</th>
+            <th>Skill ID</th>
+            <th>Skill Name</th>
+            <th>Skill Rating</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {filteredSkills.map((skill) => (
             <tr key={skill.Skill_id}>
-              <td className="tdStyle">{skill.Skill_id}</td>
-              <td className="tdStyle">{skill.Skill_Rating}</td>
-              <td className="tdStyle">{skill.Skill_Description}</td>
-              <td className="tdStyle">
-                <button onClick={() => editSkill(skill)} className="buttonStyle">Edit</button>
+              <td>{skill.Skill_id}</td>
+              <td>{skill.Skill_Description}</td>
+              <td>{skill.Skill_Rating}</td>
+              <td>
+                <Button onClick={() => editSkill(skill)} variant="warning" size="sm">
+                  Edit
+                </Button>
               </td>
             </tr>
           ))}
         </tbody>
-      </table>
-      <style>{`
-        .searchStyle {
-          margin-bottom: 20px;
-          padding: 12px 20px;
-          width: 300px;
-          float: right;
-          border-radius: 25px;
-          border: 1px solid #ccc;
-          box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-          outline: none;
-          font-size: 16px;
-          transition: box-shadow 0.3s ease;
-        }
-        .formStyle {
-          margin-bottom: 20px;
-          padding: 20px;
-          border: 1px solid #ccc;
-          border-radius: 10px;
-          background-color: #e3f2fd;
-          width: 100%;
-          max-width: 550px;
-          box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-        }
-        .inputStyle {
-          margin-bottom: 10px;
-          padding: 10px;
-          width: 100%;
-          box-sizing: border-box;
-          border-radius: 20px;
-          border: 1px solid #ccc;
-          outline: none;
-          font-size: 16px;
-          box-shadow: inset 0px 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        .buttonStyle {
-          padding: 12px 20px;
-          background-color: #212F3D;
-          color: #fff;
-          border: none;
-          border-radius: 25px;
-          cursor: pointer;
-          font-size: 16px;
-          transition: background-color 0.3s ease;
-          outline: none;
-        }
-        .tableStyle {
-          width: 100%;
-          border-collapse: collapse;
-          box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-        }
-        .thStyle {
-          border-bottom: 2px solid #ddd;
-          padding: 15px;
-          text-align: left;
-          background-color: #1F618D;
-          color: #fff;
-          font-size: 18px;
-        }
-        .tdStyle {
-          border-bottom: 1px solid #ddd;
-          padding: 15px;
-          font-size: 16px;
-        }
-        /* Media Queries */
-        @media (max-width: 768px) {
-          .formStyle {
-            width: 100%;
-            padding: 15px;
-          }
-          .searchStyle {
-            width: 100%;
-            margin-bottom: 10px;
-          }
-          .buttonStyle {
-            width: 100%;
-            margin-top: 10px;
-          }
-          .tableStyle {
-            font-size: 14px;
-          }
-          .thStyle, .tdStyle {
-            padding: 10px;
-          }
-        }
-      `}</style>
+      </Table>
 
-      {notification && (
-        <div style={{
-          backgroundColor: '#4CAF50',
-          color: 'white',
-          textAlign: 'center',
-          padding: '10px',
-          position: 'fixed',
-          top: '10px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: '1',
-        }}>
+      <Snackbar open={snackbarOpen} autoHideDuration={3000} onClose={handleSnackbarClose}>
+        <Alert onClose={handleSnackbarClose} severity="success" sx={{ width: '100%' }}>
           {notification}
-        </div>
-      )}
-        </Container >
-
+        </Alert>
+      </Snackbar>
+    </Container>
   );
 };
 

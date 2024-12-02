@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import 'bootstrap/dist/css/bootstrap.min.css';
+import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import { CssBaseline, ThemeProvider } from '@mui/material';
 import { createTheme } from '@mui/material/styles';
@@ -25,29 +24,29 @@ const darkDrawerTheme = createTheme({
   },
 });
 
-const AppContent = () => {
-  const isAuthenticated = !!localStorage.getItem('authToken');
-  const location = useLocation();
+const ProtectedRoute = ({ element }) => {
+  const isAuthenticated = !!sessionStorage.getItem('authToken');
+  return isAuthenticated ? element : <Navigate to="/login" />;
+};
 
-  // Determine if the current route is "/login"
+const AppContent = () => {
+  const location = useLocation();
+  const isAuthenticated = !!sessionStorage.getItem('authToken');
   const showNavbar = !(location.pathname === "/login" || location.pathname === "/home");
 
   return (
     <div>
       {showNavbar && isAuthenticated && <HomePage />}
       <Routes>
-        <Route path="/login" element={<LoginPage onLogin={() => {
-          localStorage.setItem('authToken', 'dummyToken'); // Simulate setting an auth token
-          window.location.href = "/home"; // Navigate to the home page after login
-        }} />} />
-        <Route path="/home" element={isAuthenticated ? <HomePage /> : <Navigate to="/login" />} />
-        <Route path="/stage-master" element={isAuthenticated ? <StageMaster /> : <Navigate to="/login" />} />
-        <Route path="/skill-master" element={isAuthenticated ? <SkillMaster /> : <Navigate to="/login" />} />
-        <Route path="/user-skills" element={isAuthenticated ? <UserSkills /> : <Navigate to="/login" />} />
-        <Route path="/user-shift-upload" element={isAuthenticated ? <UserShiftUpload /> : <Navigate to="/login" />} />
-        <Route path="/user-shift-report" element={isAuthenticated ? <UserShiftReport /> : <Navigate to="/login" />} />
-        <Route path="/attendance" element={isAuthenticated ? <Attendance /> : <Navigate to="/login" />} />
-        <Route path="/" element={isAuthenticated ? <Navigate to="/login" /> : <Navigate to="/login" />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/home" element={<ProtectedRoute element={<HomePage />} />} />
+        <Route path="/stage-master" element={<ProtectedRoute element={<StageMaster />} />} />
+        <Route path="/skill-master" element={<ProtectedRoute element={<SkillMaster />} />} />
+        <Route path="/user-skills" element={<ProtectedRoute element={<UserSkills />} />} />
+        <Route path="/user-shift-upload" element={<ProtectedRoute element={<UserShiftUpload />} />} />
+        <Route path="/user-shift-report" element={<ProtectedRoute element={<UserShiftReport />} />} />
+        <Route path="/attendance" element={<ProtectedRoute element={<Attendance />} />} />
+        <Route path="/" element={<Navigate to="/login" />} />
       </Routes>
     </div>
   );
